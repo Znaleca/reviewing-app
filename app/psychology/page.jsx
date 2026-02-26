@@ -98,6 +98,17 @@ export default function PsychologyDashboard() {
         setLoading(true);
         setSelectedSize(size);
 
+        // 1. Fetch user's seen questions
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("seen_questions")
+            .eq("id", user?.id)
+            .single();
+
+        const seenMap = profile?.seen_questions || {};
+        const seenIds = seenMap.psychology || [];
+
+        // 2. Fetch all eligible questions (with and without category filter)
         let query = supabase
             .from("questions")
             .select("*")
@@ -107,12 +118,26 @@ export default function PsychologyDashboard() {
             query = query.eq("category", selectedTopic);
         }
 
-        const { data, error } = await query.limit(size);
+        const { data: allQuestions, error } = await query;
 
-        if (!error && data) {
-            const shuffled = data.sort(() => Math.random() - 0.5);
-            setQuestions(shuffled);
-            setAnswers(new Array(shuffled.length).fill(null));
+        if (!error && allQuestions) {
+            // 3. Separate into unseen and seen
+            const unseen = allQuestions.filter(q => !seenIds.includes(q.id));
+            const seen = allQuestions.filter(q => seenIds.includes(q.id));
+
+            let selected = [];
+            if (unseen.length >= size) {
+                // If we have enough unseen, shuffle and pick
+                selected = unseen.sort(() => Math.random() - 0.5).slice(0, size);
+            } else {
+                // If not enough unseen, take ALL unseen and fill remainder from seen
+                const remainder = size - unseen.length;
+                const shuffledSeen = seen.sort(() => Math.random() - 0.5).slice(0, remainder);
+                selected = [...unseen, ...shuffledSeen].sort(() => Math.random() - 0.5);
+            }
+
+            setQuestions(selected);
+            setAnswers(new Array(selected.length).fill(null));
             setCurrentIndex(0);
             setPhase("quiz");
         }
@@ -175,9 +200,22 @@ export default function PsychologyDashboard() {
 
                 const currentPoints = profile?.rank_points || 0;
 
+                // Update seen questions tracking
+                const currentSeen = profile?.seen_questions || {};
+                const psychSeen = new Set(currentSeen.psychology || []);
+                questions.forEach(q => psychSeen.add(q.id));
+
+                const updatedSeen = {
+                    ...currentSeen,
+                    psychology: Array.from(psychSeen)
+                };
+
                 await supabase
                     .from("profiles")
-                    .update({ rank_points: currentPoints + totalPoints })
+                    .update({
+                        rank_points: currentPoints + totalPoints,
+                        seen_questions: updatedSeen
+                    })
                     .eq("id", user.id);
 
                 // Save to quiz_results to track daily attempts and score

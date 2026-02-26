@@ -173,9 +173,22 @@ export default function NursingDashboard() {
 
                 const currentPoints = profile?.rank_points || 0;
 
+                // Update seen questions tracking
+                const currentSeen = profile?.seen_questions || {};
+                const nursingSeen = new Set(currentSeen.nursing || []);
+                questions.forEach(q => nursingSeen.add(q.id));
+
+                const updatedSeen = {
+                    ...currentSeen,
+                    nursing: Array.from(nursingSeen)
+                };
+
                 await supabase
                     .from("profiles")
-                    .update({ rank_points: currentPoints + totalPoints })
+                    .update({
+                        rank_points: currentPoints + totalPoints,
+                        seen_questions: updatedSeen
+                    })
                     .eq("id", user.id);
 
                 // Save to quiz_results to track daily attempts and score
