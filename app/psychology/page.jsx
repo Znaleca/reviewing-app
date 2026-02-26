@@ -78,12 +78,10 @@ export default function PsychologyDashboard() {
             query = query.eq("category", selectedTopic);
         }
 
-        const { data, error } = await query;
+        const { data, error } = await query.limit(size);
 
         if (!error && data) {
-            // Shuffle ALL results first, then take the requested amount
-            // This ensures a broad mix of topics when "All Topics" is selected
-            const shuffled = data.sort(() => Math.random() - 0.5).slice(0, size);
+            const shuffled = data.sort(() => Math.random() - 0.5);
             setQuestions(shuffled);
             setAnswers(new Array(shuffled.length).fill(null));
             setCurrentIndex(0);
@@ -91,7 +89,6 @@ export default function PsychologyDashboard() {
         }
         setLoading(false);
     };
-
 
     const recordAnswer = useCallback((answerIndex) => {
         setAnswers(prev => {

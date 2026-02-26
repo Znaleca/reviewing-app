@@ -8,7 +8,6 @@ import {
   FaStethoscope,
   FaArrowRight,
   FaAward,
-  FaShieldAlt,
 } from "react-icons/fa";
 
 export default function LandingPage() {
@@ -154,34 +153,6 @@ export default function LandingPage() {
 
           </div>
         )}
-
-        {/* Footer */}
-        <div className="mt-28 py-10 border-t border-slate-200/60 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-400 text-sm font-medium">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <FaShieldAlt className="text-slate-300" />
-              <span>Verified Content</span>
-            </div>
-
-            <span className="h-4 w-[1px] bg-slate-200"></span>
-
-            <span>
-              Powered by{" "}
-              <span className="text-slate-600 font-bold">
-                Supabase
-              </span>
-            </span>
-          </div>
-
-          <div className="flex gap-8">
-            <a href="#" className="hover:text-primary transition-colors">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Student Terms
-            </a>
-          </div>
-        </div>
 
       </div>
     </div>

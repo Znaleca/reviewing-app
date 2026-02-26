@@ -8,8 +8,12 @@
 
 DO $$
 DECLARE
-  v_user_id UUID := '3c4ca78b-2934-48d5-87ec-a7f01103cd85'; -- <-- PASTE YOUR USER ID HERE
+  v_user_id UUID := '8066d32d-user-0000-0000-000000000000'; -- Standard system ID
 BEGIN
+    -- Ensure a profile exists for this system user
+    INSERT INTO public.profiles (id, full_name, role)
+    VALUES (v_user_id, 'Topnotcher Library', 'admin')
+    ON CONFLICT (id) DO NOTHING;
 
 -- ==========================================
 -- FUNDAMENTALS OF NURSING (Items 1-20)

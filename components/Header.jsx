@@ -11,7 +11,6 @@ import {
     FaSignOutAlt,
     FaShieldAlt,
     FaUserGraduate,
-    FaPlusCircle,
     FaHistory
 } from "react-icons/fa";
 
@@ -25,8 +24,8 @@ export default function Header() {
     // Navigation Links Array
     const navLinks = [
         { name: "Home", href: "/" },
-        { name: "About", href: "/about" },
-        { name: "Courses", href: "/courses" },
+        { name: "Study Guide", href: "/courses" },
+        { name: "Showcase", href: "/flashcards" },
         { name: "Contact", href: "/contact" },
     ];
 
@@ -115,15 +114,7 @@ export default function Header() {
                                 {link.name}
                             </Link>
                         ))}
-                        {user && (
-                            <Link
-                                href="/create-card"
-                                className="text-sm font-black text-primary hover:text-primary-dark transition-colors flex items-center gap-1.5"
-                            >
-                                <FaPlusCircle className="size-3.5" />
-                                Create Card
-                            </Link>
-                        )}
+
                         {user && (
                             <Link
                                 href="/flashcards/my"
@@ -212,16 +203,7 @@ export default function Header() {
                         </Link>
                     ))}
 
-                    {user && (
-                        <Link
-                            href="/create-card"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black text-primary border-b border-primary/10 pb-2 flex items-center gap-2"
-                        >
-                            <FaPlusCircle size={20} />
-                            Create Card
-                        </Link>
-                    )}
+
 
                     {user && (
                         <Link
