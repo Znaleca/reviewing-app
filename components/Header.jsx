@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import {
     FaGraduationCap,
     FaBars,
     FaTimes,
     FaUserCircle,
-    FaSignOutAlt,
     FaShieldAlt,
     FaUserGraduate,
     FaHistory,
@@ -18,7 +17,9 @@ import {
 export default function Header() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
     const [user, setUser] = useState(null);
+    const dropdownRef = useRef(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -33,7 +34,14 @@ export default function Header() {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsUserDropdownOpen(false);
+            }
+        };
+
         window.addEventListener("scroll", handleScroll);
+        document.addEventListener("mousedown", handleClickOutside);
 
         const checkUser = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -57,6 +65,7 @@ export default function Header() {
 
         return () => {
             window.removeEventListener("scroll", handleScroll);
+            document.removeEventListener("mousedown", handleClickOutside);
             subscription.unsubscribe();
         };
     }, []);
@@ -120,10 +129,11 @@ export default function Header() {
                                 href="/flashcards/my"
                                 className="text-sm font-black text-slate-800 hover:text-primary transition-colors flex items-center gap-1.5"
                             >
-                                <FaHistory className="size-3.5" />
+                                <FaHistory className="size-3.5" strokeWidth={1} />
                                 My Cards
                             </Link>
                         )}
+
                         <Link
                             href="/leaderboards"
                             className="text-sm font-black text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1.5"
@@ -135,34 +145,61 @@ export default function Header() {
 
                     {!loading && (
                         user ? (
-                            <div className="flex items-center gap-4 pl-4 border-l border-slate-200">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-sm font-black text-slate-900 leading-none mb-1">
-                                        {profile?.full_name || "User"}
-                                    </span>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${profile?.role === 'admin'
-                                            ? 'bg-accent/10 text-accent ring-1 ring-accent/20'
-                                            : 'bg-primary/10 text-primary ring-1 ring-primary/20'
-                                            }`}>
-                                            {profile?.role === 'admin' ? <FaShieldAlt className="size-2" /> : <FaUserGraduate className="size-2" />}
-                                            {profile?.role || 'Examinee'}
-                                        </div>
-                                        {profile?.sub_role && (
-                                            <div className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.15em] bg-slate-100 px-1.5 py-0.5 rounded-md">
-                                                {profile.sub_role === 'psychology' ? 'BLEPP Candidate' : 'PNLE Candidate'}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
+                            <div className="relative" ref={dropdownRef}>
                                 <button
-                                    onClick={handleLogout}
-                                    className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all border border-slate-100"
-                                    title="Log Out"
+                                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                                    className={`group flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-slate-50/50 border border-slate-100 transition-all hover:bg-white hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5 active:scale-95`}
                                 >
-                                    <FaSignOutAlt size={18} />
+                                    <div className="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-primary group-hover:scale-110 transition-all">
+                                        <FaUserCircle size={22} />
+                                    </div>
+                                    <div className="flex flex-col items-start gap-0.5">
+                                        <span className="text-[13px] font-black text-slate-900 leading-none">
+                                            {profile?.full_name || user?.user_metadata?.full_name || "User"}
+                                        </span>
+                                        <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-tight ${profile?.role === 'admin' ? 'text-accent' : 'text-primary/60'}`}>
+                                            {profile?.role || 'Examinee'}
+                                            {(profile?.sub_role || user?.user_metadata?.sub_role) && (
+                                                <> • {(profile?.sub_role || user?.user_metadata?.sub_role) === 'psychology' ? 'Psychology' : 'Nursing'}</>
+                                            )}
+                                        </div>
+                                    </div>
                                 </button>
+
+                                {/* Dropdown Menu */}
+                                <div className={`absolute right-0 mt-4 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-2 transition-all duration-300 transform origin-top-right ${isUserDropdownOpen
+                                    ? "opacity-100 scale-100 translate-y-0"
+                                    : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
+                                    }`}>
+                                    <div className="px-4 py-3 border-b border-slate-50 mb-2">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Logged in as</p>
+                                        <p className="text-sm font-black text-slate-900 truncate">
+                                            {user?.email}
+                                        </p>
+                                    </div>
+
+                                    <Link
+                                        href="/profile"
+                                        onClick={() => setIsUserDropdownOpen(false)}
+                                        className="flex items-center px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-primary font-bold text-sm transition-all"
+                                    >
+                                        My Profile
+                                    </Link>
+
+
+
+                                    <div className="my-2 h-px bg-slate-50" />
+
+                                    <button
+                                        onClick={() => {
+                                            setIsUserDropdownOpen(false);
+                                            handleLogout();
+                                        }}
+                                        className="w-full flex items-center px-4 py-3 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 font-bold text-sm transition-all"
+                                    >
+                                        Sign Out
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div className="flex items-center gap-4 border-l border-slate-200 pl-6">
@@ -199,52 +236,67 @@ export default function Header() {
             >
                 <div className="flex flex-col p-8 gap-4">
                     {/* Mobile Main Links */}
-                    {navLinks.map((link) => (
+                    <div className="flex flex-col gap-2">
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.name}
+                                href={link.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 active:scale-95 transition-all"
+                            >
+                                <span className="text-lg font-bold">{link.name}</span>
+                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400">
+                                    <FaGraduationCap size={16} />
+                                </div>
+                            </Link>
+                        ))}
+
+                        {user && (
+                            <Link
+                                href="/flashcards/my"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="flex items-center justify-between p-4 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 active:scale-95 transition-all"
+                            >
+                                <span className="text-lg font-bold">My Study Cards</span>
+                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-amber-500">
+                                    <FaHistory size={16} />
+                                </div>
+                            </Link>
+                        )}
+
                         <Link
-                            key={link.name}
-                            href={link.href}
+                            href="/leaderboards"
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-2"
+                            className="flex items-center justify-between p-4 rounded-2xl bg-primary/5 text-primary border border-primary/10 active:scale-95 transition-all"
                         >
-                            {link.name}
+                            <span className="text-lg font-bold">Leaderboards</span>
+                            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary">
+                                <FaTrophy size={16} />
+                            </div>
                         </Link>
-                    ))}
+                    </div>
 
-
+                    <div className="my-2 h-px bg-slate-100" />
 
                     {user && (
-                        <Link
-                            href="/flashcards/my"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2"
-                        >
-                            <FaHistory size={20} />
-                            My Cards
-                        </Link>
-
-                    )}
-                    <Link
-                        href="/leaderboards"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="text-xl font-black text-amber-500 border-b border-slate-100 pb-2 flex items-center gap-2"
-                    >
-                        <FaTrophy size={20} />
-                        Leaderboards
-                    </Link>
-
-                    <div className="my-4 h-px bg-slate-100" />
-
-                    {user && (
-                        <div className="mb-4 p-6 glass-panel flex items-center gap-4 border-primary/10">
-                            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                                <FaUserCircle size={32} />
-                            </div>
-                            <div>
-                                <p className="font-black text-slate-900">{profile?.full_name || "User"}</p>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">
-                                    {profile?.role || "Examinee"}
-                                </span>
-                            </div>
+                        <div className="flex flex-col gap-3">
+                            <Link
+                                href="/profile"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="p-5 rounded-3xl bg-white border border-slate-100 shadow-sm flex items-center gap-4 hover:bg-slate-50 transition-colors"
+                            >
+                                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                    <FaUserCircle size={36} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-black text-slate-900 truncate">{profile?.full_name || user?.user_metadata?.full_name || "User"}</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                            Examinee Dashboard
+                                        </span>
+                                    </div>
+                                </div>
+                            </Link>
                         </div>
                     )}
 
