@@ -11,7 +11,8 @@ import {
     FaChartBar,
     FaCheckCircle,
     FaTimesCircle,
-    FaArrowLeft
+    FaArrowLeft,
+    FaLayerGroup
 } from "react-icons/fa";
 import Link from "next/link";
 
@@ -23,32 +24,66 @@ export default function PsychologyDashboard() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState([]);
     const [selectedSize, setSelectedSize] = useState(null);
+    const [selectedTopic, setSelectedTopic] = useState(null);
+    const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(false);
     const [totalAvailable, setTotalAvailable] = useState(0);
 
+    // Fetch topics and total count on mount
     useEffect(() => {
-        const getCount = async () => {
-            const { count } = await supabase
+        const init = async () => {
+            // Get all psychology questions to extract unique categories
+            const { data } = await supabase
+                .from("questions")
+                .select("category")
+                .eq("module", "psychology");
+
+            if (data) {
+                const uniqueTopics = [...new Set(data.map(q => q.category).filter(Boolean))].sort();
+                setTopics(uniqueTopics);
+                setTotalAvailable(data.length);
+            }
+        };
+        init();
+    }, []);
+
+    // Update count when topic changes
+    useEffect(() => {
+        const updateCount = async () => {
+            let query = supabase
                 .from("questions")
                 .select("*", { count: "exact", head: true })
                 .eq("module", "psychology");
+
+            if (selectedTopic) {
+                query = query.eq("category", selectedTopic);
+            }
+
+            const { count } = await query;
             setTotalAvailable(count || 0);
         };
-        getCount();
-    }, []);
+        updateCount();
+    }, [selectedTopic]);
 
     const startQuiz = async (size) => {
         setLoading(true);
         setSelectedSize(size);
 
-        const { data, error } = await supabase
+        let query = supabase
             .from("questions")
             .select("*")
-            .eq("module", "psychology")
-            .limit(size);
+            .eq("module", "psychology");
+
+        if (selectedTopic) {
+            query = query.eq("category", selectedTopic);
+        }
+
+        const { data, error } = await query;
 
         if (!error && data) {
-            const shuffled = data.sort(() => Math.random() - 0.5);
+            // Shuffle ALL results first, then take the requested amount
+            // This ensures a broad mix of topics when "All Topics" is selected
+            const shuffled = data.sort(() => Math.random() - 0.5).slice(0, size);
             setQuestions(shuffled);
             setAnswers(new Array(shuffled.length).fill(null));
             setCurrentIndex(0);
@@ -56,6 +91,7 @@ export default function PsychologyDashboard() {
         }
         setLoading(false);
     };
+
 
     const recordAnswer = useCallback((answerIndex) => {
         setAnswers(prev => {
@@ -112,10 +148,44 @@ export default function PsychologyDashboard() {
                         {totalAvailable > 0 && (
                             <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-black uppercase tracking-widest">
                                 <FaChartBar /> {totalAvailable} questions available
+                                {selectedTopic && <span className="ml-1">in {selectedTopic}</span>}
                             </div>
                         )}
                     </header>
 
+                    {/* ── Topic Selector ── */}
+                    {topics.length > 0 && (
+                        <div className="mb-12 animate-fade-in animation-delay-200">
+                            <h2 className="text-center text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center justify-center gap-2">
+                                <FaLayerGroup /> Select a Topic
+                            </h2>
+                            <div className="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
+                                <button
+                                    onClick={() => setSelectedTopic(null)}
+                                    className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border-2 transition-all duration-300 ${selectedTopic === null
+                                        ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                                        : "border-slate-200 bg-white text-slate-500 hover:border-primary/50 hover:text-primary"
+                                        }`}
+                                >
+                                    All Topics
+                                </button>
+                                {topics.map((topic) => (
+                                    <button
+                                        key={topic}
+                                        onClick={() => setSelectedTopic(topic)}
+                                        className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border-2 transition-all duration-300 ${selectedTopic === topic
+                                            ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                                            : "border-slate-200 bg-white text-slate-500 hover:border-primary/50 hover:text-primary"
+                                            }`}
+                                    >
+                                        {topic}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Item Count Selector ── */}
                     <div className="animate-fade-in animation-delay-300">
                         <h2 className="text-center text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-8">
                             Select Number of Items
@@ -129,8 +199,8 @@ export default function PsychologyDashboard() {
                                         onClick={() => isAvailable && startQuiz(size)}
                                         disabled={!isAvailable || loading}
                                         className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 text-center ${isAvailable
-                                                ? "border-slate-200 bg-white hover:border-primary hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 cursor-pointer"
-                                                : "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                                            ? "border-slate-200 bg-white hover:border-primary hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 cursor-pointer"
+                                            : "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
                                             }`}
                                     >
                                         <div className="text-3xl font-black text-slate-800 group-hover:text-primary transition-colors">
@@ -217,8 +287,8 @@ export default function PsychologyDashboard() {
                             onClick={goNext}
                             disabled={!hasAnswered}
                             className={`px-8 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center gap-2 ${hasAnswered
-                                    ? "bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5"
-                                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                                ? "bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5"
+                                : "bg-slate-100 text-slate-300 cursor-not-allowed"
                                 }`}
                         >
                             {currentIndex === questions.length - 1 ? (
@@ -289,10 +359,10 @@ export default function PsychologyDashboard() {
                                                 <div
                                                     key={cIdx}
                                                     className={`px-4 py-2 rounded-lg text-sm font-medium border ${cIdx === q.correct_answer
-                                                            ? "bg-primary/10 border-primary/30 text-primary font-bold"
-                                                            : cIdx === answers[idx]
-                                                                ? "bg-red-50 border-red-200 text-red-600 line-through opacity-70"
-                                                                : "bg-slate-50 border-slate-100 text-slate-500"
+                                                        ? "bg-primary/10 border-primary/30 text-primary font-bold"
+                                                        : cIdx === answers[idx]
+                                                            ? "bg-red-50 border-red-200 text-red-600 line-through opacity-70"
+                                                            : "bg-slate-50 border-slate-100 text-slate-500"
                                                         }`}
                                                 >
                                                     <span className="font-black mr-2">{String.fromCharCode(65 + cIdx)}.</span>

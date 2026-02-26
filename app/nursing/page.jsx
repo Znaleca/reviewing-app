@@ -11,46 +11,76 @@ import {
     FaChartBar,
     FaCheckCircle,
     FaTimesCircle,
-    FaArrowLeft
+    FaArrowLeft,
+    FaLayerGroup
 } from "react-icons/fa";
 import Link from "next/link";
 
 const QUIZ_SIZES = [10, 20, 50, 70, 100, 120];
 
 export default function NursingDashboard() {
-    const [phase, setPhase] = useState("select"); // "select" | "quiz" | "results"
+    const [phase, setPhase] = useState("select");
     const [questions, setQuestions] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState([]);
     const [selectedSize, setSelectedSize] = useState(null);
+    const [selectedTopic, setSelectedTopic] = useState(null);
+    const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(false);
     const [totalAvailable, setTotalAvailable] = useState(0);
 
-    // Fetch count on mount
+    // Fetch topics and total count on mount
     useEffect(() => {
-        const getCount = async () => {
-            const { count } = await supabase
+        const init = async () => {
+            const { data } = await supabase
+                .from("questions")
+                .select("category")
+                .eq("module", "nursing");
+
+            if (data) {
+                const uniqueTopics = [...new Set(data.map(q => q.category).filter(Boolean))].sort();
+                setTopics(uniqueTopics);
+                setTotalAvailable(data.length);
+            }
+        };
+        init();
+    }, []);
+
+    // Update count when topic changes
+    useEffect(() => {
+        const updateCount = async () => {
+            let query = supabase
                 .from("questions")
                 .select("*", { count: "exact", head: true })
                 .eq("module", "nursing");
+
+            if (selectedTopic) {
+                query = query.eq("category", selectedTopic);
+            }
+
+            const { count } = await query;
             setTotalAvailable(count || 0);
         };
-        getCount();
-    }, []);
+        updateCount();
+    }, [selectedTopic]);
 
     const startQuiz = async (size) => {
         setLoading(true);
         setSelectedSize(size);
 
-        const { data, error } = await supabase
+        let query = supabase
             .from("questions")
             .select("*")
-            .eq("module", "nursing")
-            .limit(size);
+            .eq("module", "nursing");
+
+        if (selectedTopic) {
+            query = query.eq("category", selectedTopic);
+        }
+
+        const { data, error } = await query;
 
         if (!error && data) {
-            // Shuffle the questions client-side for randomness
-            const shuffled = data.sort(() => Math.random() - 0.5);
+            const shuffled = data.sort(() => Math.random() - 0.5).slice(0, size);
             setQuestions(shuffled);
             setAnswers(new Array(shuffled.length).fill(null));
             setCurrentIndex(0);
@@ -109,15 +139,49 @@ export default function NursingDashboard() {
                             PNLE Nursing Reviewer
                         </h1>
                         <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">
-                            Comprehensive board review focusing on the core competencies of the Philippine Nurse Licensure Exam.
+                            Ace the Philippine Nursing Licensure Examination with comprehensive practice questions.
                         </p>
                         {totalAvailable > 0 && (
                             <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-black uppercase tracking-widest">
                                 <FaChartBar /> {totalAvailable} questions available
+                                {selectedTopic && <span className="ml-1">in {selectedTopic}</span>}
                             </div>
                         )}
                     </header>
 
+                    {/* ── Topic Selector ── */}
+                    {topics.length > 0 && (
+                        <div className="mb-12 animate-fade-in animation-delay-200">
+                            <h2 className="text-center text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center justify-center gap-2">
+                                <FaLayerGroup /> Select a Topic
+                            </h2>
+                            <div className="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
+                                <button
+                                    onClick={() => setSelectedTopic(null)}
+                                    className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border-2 transition-all duration-300 ${selectedTopic === null
+                                        ? "border-secondary bg-secondary text-white shadow-lg shadow-secondary/20"
+                                        : "border-slate-200 bg-white text-slate-500 hover:border-secondary/50 hover:text-secondary"
+                                        }`}
+                                >
+                                    All Topics
+                                </button>
+                                {topics.map((topic) => (
+                                    <button
+                                        key={topic}
+                                        onClick={() => setSelectedTopic(topic)}
+                                        className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border-2 transition-all duration-300 ${selectedTopic === topic
+                                            ? "border-secondary bg-secondary text-white shadow-lg shadow-secondary/20"
+                                            : "border-slate-200 bg-white text-slate-500 hover:border-secondary/50 hover:text-secondary"
+                                            }`}
+                                    >
+                                        {topic}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Item Count Selector ── */}
                     <div className="animate-fade-in animation-delay-300">
                         <h2 className="text-center text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-8">
                             Select Number of Items
@@ -131,8 +195,8 @@ export default function NursingDashboard() {
                                         onClick={() => isAvailable && startQuiz(size)}
                                         disabled={!isAvailable || loading}
                                         className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 text-center ${isAvailable
-                                                ? "border-slate-200 bg-white hover:border-secondary hover:shadow-xl hover:shadow-secondary/10 hover:-translate-y-1 cursor-pointer"
-                                                : "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                                            ? "border-slate-200 bg-white hover:border-secondary hover:shadow-xl hover:shadow-secondary/10 hover:-translate-y-1 cursor-pointer"
+                                            : "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
                                             }`}
                                     >
                                         <div className="text-3xl font-black text-slate-800 group-hover:text-secondary transition-colors">
@@ -219,8 +283,8 @@ export default function NursingDashboard() {
                             onClick={goNext}
                             disabled={!hasAnswered}
                             className={`px-8 py-3 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center gap-2 ${hasAnswered
-                                    ? "bg-secondary text-white shadow-lg shadow-secondary/20 hover:shadow-xl hover:-translate-y-0.5"
-                                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                                ? "bg-secondary text-white shadow-lg shadow-secondary/20 hover:shadow-xl hover:-translate-y-0.5"
+                                : "bg-slate-100 text-slate-300 cursor-not-allowed"
                                 }`}
                         >
                             {currentIndex === questions.length - 1 ? (
@@ -291,10 +355,10 @@ export default function NursingDashboard() {
                                                 <div
                                                     key={cIdx}
                                                     className={`px-4 py-2 rounded-lg text-sm font-medium border ${cIdx === q.correct_answer
-                                                            ? "bg-secondary/10 border-secondary/30 text-secondary font-bold"
-                                                            : cIdx === answers[idx]
-                                                                ? "bg-red-50 border-red-200 text-red-600 line-through opacity-70"
-                                                                : "bg-slate-50 border-slate-100 text-slate-500"
+                                                        ? "bg-secondary/10 border-secondary/30 text-secondary font-bold"
+                                                        : cIdx === answers[idx]
+                                                            ? "bg-red-50 border-red-200 text-red-600 line-through opacity-70"
+                                                            : "bg-slate-50 border-slate-100 text-slate-500"
                                                         }`}
                                                 >
                                                     <span className="font-black mr-2">{String.fromCharCode(65 + cIdx)}.</span>
