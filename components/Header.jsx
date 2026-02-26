@@ -11,7 +11,8 @@ import {
     FaSignOutAlt,
     FaShieldAlt,
     FaUserGraduate,
-    FaHistory
+    FaHistory,
+    FaTrophy
 } from "react-icons/fa";
 
 export default function Header() {
@@ -26,7 +27,6 @@ export default function Header() {
         { name: "Home", href: "/" },
         { name: "Study Guide", href: "/courses" },
         { name: "Showcase", href: "/flashcards" },
-        { name: "Contact", href: "/contact" },
     ];
 
     useEffect(() => {
@@ -116,13 +116,22 @@ export default function Header() {
                         ))}
 
                         {user && (
-                            <Link
-                                href="/flashcards/my"
-                                className="text-sm font-black text-slate-800 hover:text-primary transition-colors flex items-center gap-1.5"
-                            >
-                                <FaHistory className="size-3.5" />
-                                My Cards
-                            </Link>
+                            <>
+                                <Link
+                                    href="/flashcards/my"
+                                    className="text-sm font-black text-slate-800 hover:text-primary transition-colors flex items-center gap-1.5"
+                                >
+                                    <FaHistory className="size-3.5" />
+                                    My Cards
+                                </Link>
+                                <Link
+                                    href="/leaderboards"
+                                    className="text-sm font-black text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1.5"
+                                >
+                                    <FaTrophy className="size-3.5" />
+                                    Leaderboards
+                                </Link>
+                            </>
                         )}
                     </div>
 
@@ -206,14 +215,24 @@ export default function Header() {
 
 
                     {user && (
-                        <Link
-                            href="/flashcards/my"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="text-xl font-black text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2"
-                        >
-                            <FaHistory size={20} />
-                            My Cards
-                        </Link>
+                        <>
+                            <Link
+                                href="/flashcards/my"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="text-xl font-black text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2"
+                            >
+                                <FaHistory size={20} />
+                                My Cards
+                            </Link>
+                            <Link
+                                href="/leaderboards"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="text-xl font-black text-amber-500 border-b border-slate-100 pb-2 flex items-center gap-2"
+                            >
+                                <FaTrophy size={20} />
+                                Leaderboards
+                            </Link>
+                        </>
                     )}
 
                     <div className="my-4 h-px bg-slate-100" />

@@ -28,6 +28,9 @@ export default function NursingDashboard() {
     const [topics, setTopics] = useState([]);
     const [loading, setLoading] = useState(false);
     const [totalAvailable, setTotalAvailable] = useState(0);
+    const [quizMode, setQuizMode] = useState("normal"); // "normal" or "ranked"
+    const [dailyRankedCount, setDailyRankedCount] = useState(0);
+
 
     // Fetch topics and total count on mount
     useEffect(() => {
@@ -45,6 +48,27 @@ export default function NursingDashboard() {
         };
         init();
     }, []);
+
+    // Fetch daily ranked attempts for nursing
+    useEffect(() => {
+        const fetchDailyLimit = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const { count } = await supabase
+                .from("quiz_results")
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", user.id)
+                .eq("mode", "ranked")
+                .gte("created_at", today.toISOString());
+
+            setDailyRankedCount(count || 0);
+        };
+        fetchDailyLimit();
+    }, [phase]);
 
     // Update count when topic changes
     useEffect(() => {
@@ -126,6 +150,45 @@ export default function NursingDashboard() {
         setSelectedSize(null);
     };
 
+    // Save points and results to supabase in ranked mode
+    useEffect(() => {
+        if (phase === "results" && quizMode === "ranked" && score > 0) {
+            const savePoints = async () => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const bonus = score === questions.length ? (questions.length / 10) * 5 : 0;
+                const totalPoints = (score * 5) + bonus;
+
+                // First get current points to increment
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("rank_points")
+                    .eq("id", user.id)
+                    .single();
+
+                const currentPoints = profile?.rank_points || 0;
+
+                await supabase
+                    .from("profiles")
+                    .update({ rank_points: currentPoints + totalPoints })
+                    .eq("id", user.id);
+
+                // Save to quiz_results to track daily attempts and score
+                await supabase
+                    .from("quiz_results")
+                    .insert({
+                        user_id: user.id,
+                        module: "nursing",
+                        score: score,
+                        total_questions: questions.length,
+                        mode: "ranked"
+                    });
+            };
+            savePoints();
+        }
+    }, [phase, quizMode, score, questions.length]);
+
     // ─── SELECT PHASE ───
     if (phase === "select") {
         return (
@@ -138,6 +201,38 @@ export default function NursingDashboard() {
                         <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-3">
                             PNLE Nursing Reviewer
                         </h1>
+                        <div className="flex justify-center gap-4 mt-6">
+                            <button
+                                onClick={() => setQuizMode("normal")}
+                                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${quizMode === "normal"
+                                    ? "bg-white border-secondary text-secondary shadow-lg shadow-secondary/10 -translate-y-1"
+                                    : "bg-slate-50 border-transparent text-slate-400 hover:text-slate-600"
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${quizMode === 'normal' ? 'bg-secondary animate-pulse' : 'bg-slate-300'}`} />
+                                    Normal Mode
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => dailyRankedCount < 5 && setQuizMode("ranked")}
+                                disabled={dailyRankedCount >= 5}
+                                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${quizMode === "ranked"
+                                    ? "bg-white border-amber-500 text-amber-600 shadow-lg shadow-amber-500/10 -translate-y-1"
+                                    : dailyRankedCount >= 5
+                                        ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed"
+                                        : "bg-slate-50 border-transparent text-slate-400 hover:text-slate-600"
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${quizMode === 'ranked' ? 'bg-amber-500 animate-bounce' : 'bg-slate-300'}`} />
+                                    Ranked Mode {dailyRankedCount >= 5 ? "(Limit Reached)" : `(${5 - dailyRankedCount} left)`}
+                                </div>
+                            </button>
+                        </div>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-4">
+                            {quizMode === "normal" ? "• Immediate feedback • Learn as you go" : "• Delayed results • Earn points • Bonus for perfect marks"}
+                        </p>
                         <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">
                             Ace the Philippine Nursing Licensure Examination with comprehensive practice questions.
                         </p>
@@ -268,6 +363,7 @@ export default function NursingDashboard() {
                         explanation={currentQ.explanation}
                         category={currentQ.category}
                         onAnswerSelect={recordAnswer}
+                        rankMode={quizMode === "ranked"}
                     />
 
                     {/* Navigation */}
@@ -313,6 +409,25 @@ export default function NursingDashboard() {
                     <p className="text-slate-500 text-lg font-medium">
                         You completed {questions.length} nursing board exam items.
                     </p>
+
+                    {quizMode === "ranked" && (
+                        <div className="mt-6 inline-flex flex-col items-center">
+                            <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-amber-400/10 text-amber-600 border-2 border-amber-400/20 animate-bounce">
+                                <FaTrophy className="text-xl" />
+                                <div className="text-left">
+                                    <div className="text-[10px] font-black uppercase tracking-widest leading-none">Rank Points Earned</div>
+                                    <div className="text-2xl font-black leading-tight">
+                                        +{(score * 5) + (score === questions.length ? (questions.length / 10) * 5 : 0)}
+                                    </div>
+                                </div>
+                            </div>
+                            {score === questions.length && (
+                                <div className="text-[10px] font-black text-secondary uppercase tracking-widest mt-2 animate-pulse">
+                                    Perfect Score Bonus Applied!
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Score Card */}

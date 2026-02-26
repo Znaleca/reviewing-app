@@ -11,18 +11,25 @@ import {
     FaTrash
 } from "react-icons/fa";
 
-export default function QuizCard({ question, choices = [], correctAnswer, explanation, category, onEdit, onDelete, onAnswerSelect }) {
+export default function QuizCard({ question, choices = [], correctAnswer, explanation, category, onEdit, onDelete, onAnswerSelect, rankMode = false }) {
     const [selectedChoice, setSelectedChoice] = useState(null);
     const [isRevealed, setIsRevealed] = useState(false);
 
     const handleChoiceClick = (index) => {
         if (isRevealed) return;
         setSelectedChoice(index);
-        setIsRevealed(true);
+        if (!rankMode) setIsRevealed(true);
         if (onAnswerSelect) onAnswerSelect(index);
     };
 
     const getChoiceClass = (index) => {
+        // Rank mode: only highlight the selected choice neutrally, no reveal
+        if (rankMode) {
+            return selectedChoice === index
+                ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-md"
+                : "border-border hover:border-primary-light hover:bg-slate-50 hover:translate-x-1";
+        }
+
         if (!isRevealed) {
             return selectedChoice === index
                 ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-md"
@@ -43,9 +50,11 @@ export default function QuizCard({ question, choices = [], correctAnswer, explan
     return (
         <div className="glass-panel p-8 mb-8 animate-fade-in max-w-2xl mx-auto overflow-hidden relative group border-t-0">
             {/* Dynamic Status Ribbon */}
-            <div className={`absolute top-0 left-0 h-1.5 transition-all duration-700 ease-in-out ${isRevealed
-                ? (selectedChoice === correctAnswer ? "bg-secondary w-full" : "bg-red-500 w-full")
-                : "bg-slate-200 w-full"
+            <div className={`absolute top-0 left-0 h-1.5 transition-all duration-700 ease-in-out ${rankMode
+                ? "bg-primary/30 w-full"
+                : isRevealed
+                    ? (selectedChoice === correctAnswer ? "bg-secondary w-full" : "bg-red-500 w-full")
+                    : "bg-slate-200 w-full"
                 }`} />
 
             <div className="flex items-center justify-between mb-8">
@@ -58,7 +67,7 @@ export default function QuizCard({ question, choices = [], correctAnswer, explan
                     </span>
                 </div>
                 <div className="flex items-center gap-4">
-                    {isRevealed && (
+                    {!rankMode && isRevealed && (
                         <div className={`flex items-center gap-2 text-xs font-bold animate-fade-in ${selectedChoice === correctAnswer ? 'text-secondary' : 'text-red-600'
                             }`}>
                             {selectedChoice === correctAnswer ? (
@@ -66,6 +75,11 @@ export default function QuizCard({ question, choices = [], correctAnswer, explan
                             ) : (
                                 <><FaTimesCircle /> Incorrect</>
                             )}
+                        </div>
+                    )}
+                    {rankMode && selectedChoice !== null && (
+                        <div className="flex items-center gap-2 text-xs font-bold animate-fade-in text-primary">
+                            <FaRegClock /> Saved
                         </div>
                     )}
 
@@ -117,9 +131,13 @@ export default function QuizCard({ question, choices = [], correctAnswer, explan
                             className={`group/btn relative flex items-center p-5 rounded-xl border-2 transition-all duration-300 ${getChoiceClass(index)}`}
                             disabled={isRevealed}
                         >
-                            <span className={`flex-shrink-0 w-10 h-10 rounded-lg border-2 flex items-center justify-center font-bold text-sm mr-4 transition-all duration-300 ${isCorrect ? "bg-secondary text-white border-secondary rotate-[360deg]" :
-                                isWrong ? "bg-red-500 text-white border-red-500" :
-                                    "border-slate-200 text-slate-400 group-hover/btn:border-primary group-hover/btn:text-primary"
+                            <span className={`flex-shrink-0 w-10 h-10 rounded-lg border-2 flex items-center justify-center font-bold text-sm mr-4 transition-all duration-300 ${rankMode
+                                ? selectedChoice === index
+                                    ? "bg-primary text-white border-primary"
+                                    : "border-slate-200 text-slate-400 group-hover/btn:border-primary group-hover/btn:text-primary"
+                                : isCorrect ? "bg-secondary text-white border-secondary rotate-[360deg]" :
+                                    isWrong ? "bg-red-500 text-white border-red-500" :
+                                        "border-slate-200 text-slate-400 group-hover/btn:border-primary group-hover/btn:text-primary"
                                 }`}>
                                 {String.fromCharCode(65 + index)}
                             </span>
@@ -133,7 +151,7 @@ export default function QuizCard({ question, choices = [], correctAnswer, explan
             </div>
 
             {
-                isRevealed && (
+                !rankMode && isRevealed && (
                     <div className="mt-10 animate-fade-in">
                         <div className="flex items-center gap-2 mb-4 text-amber-600">
                             <FaLightbulb className="animate-pulse" />
