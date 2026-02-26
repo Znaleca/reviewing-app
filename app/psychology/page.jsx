@@ -30,12 +30,16 @@ export default function PsychologyDashboard() {
     const [totalAvailable, setTotalAvailable] = useState(0);
     const [quizMode, setQuizMode] = useState("normal"); // "normal" or "ranked"
     const [dailyRankedCount, setDailyRankedCount] = useState(0);
+    const [user, setUser] = useState(null);
 
 
 
     // Fetch topics and total count on mount
     useEffect(() => {
         const init = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user || null);
+
             // Get all psychology questions to extract unique categories
             const { data } = await supabase
                 .from("questions")
@@ -217,18 +221,18 @@ export default function PsychologyDashboard() {
                                 </div>
                             </button>
                             <button
-                                onClick={() => dailyRankedCount < 5 && setQuizMode("ranked")}
-                                disabled={dailyRankedCount >= 5}
+                                onClick={() => user && dailyRankedCount < 5 && setQuizMode("ranked")}
+                                disabled={!user || dailyRankedCount >= 5}
                                 className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 border-2 ${quizMode === "ranked"
                                     ? "bg-white border-amber-500 text-amber-600 shadow-lg shadow-amber-500/10 -translate-y-1"
-                                    : dailyRankedCount >= 5
+                                    : !user || dailyRankedCount >= 5
                                         ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed"
                                         : "bg-slate-50 border-transparent text-slate-400 hover:text-slate-600"
                                     }`}
                             >
                                 <div className="flex items-center gap-2">
                                     <div className={`w-2 h-2 rounded-full ${quizMode === 'ranked' ? 'bg-amber-500 animate-bounce' : 'bg-slate-300'}`} />
-                                    Ranked Mode {dailyRankedCount >= 5 ? "(Limit Reached)" : `(${5 - dailyRankedCount} left)`}
+                                    Ranked Mode {!user ? "(Login Required)" : dailyRankedCount >= 5 ? "(Limit Reached)" : `(${5 - dailyRankedCount} left)`}
                                 </div>
                             </button>
                         </div>
