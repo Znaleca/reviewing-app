@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -16,7 +16,19 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 
-export default function CreateCard() {
+export default function CreateCardPage() {
+    return (
+        <Suspense fallback={
+            <div className="hero-gradient min-h-[calc(100vh-5rem)] flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            </div>
+        }>
+            <CreateCard />
+        </Suspense>
+    );
+}
+
+function CreateCard() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const editId = searchParams.get("id");
