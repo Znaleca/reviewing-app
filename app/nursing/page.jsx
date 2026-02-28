@@ -359,9 +359,6 @@ export default function NursingDashboard() {
                             <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                 {currentIndex + 1} / {questions.length}
                             </div>
-                            <div className="text-xs font-black text-secondary uppercase tracking-widest">
-                                Score: {score}
-                            </div>
                         </div>
                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div
